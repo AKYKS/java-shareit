@@ -88,6 +88,7 @@ class ShareItItemsTests {
         assertThat(allItems)
                 .hasSize(2);
     }
+
     @Test
     public void createItem() {
         Item item = new Item();
