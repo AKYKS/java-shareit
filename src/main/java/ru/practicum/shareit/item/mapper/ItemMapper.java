@@ -1,33 +1,19 @@
 package ru.practicum.shareit.item.mapper;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingConstants;
+import ru.practicum.shareit.item.dto.CreateItemDto;
 import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.model.Item;
 
-@Service
-@RequiredArgsConstructor
-public class ItemMapper {
+import java.util.Collection;
 
-    public static ItemDto toItemDto(Item item) {
-        return new ItemDto(
-                item.getId(),
-                item.getName(),
-                item.getDescription(),
-                item.getAvailable(),
-                item.getOwner(),
-                item.getRequest()
-        );
-    }
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
+public interface ItemMapper {
 
-    public static Item mapToItem(ItemDto itemDto) {
-        return Item.builder()
-                .id(itemDto.getId())
-                .name(itemDto.getName())
-                .description(itemDto.getDescription())
-                .available(itemDto.getAvailable())
-                .owner(itemDto.getOwner())
-                //.request(null)  //ИСПРАВИТЬ!!! во время разработки части с request
-                .build();
-    }
+    ItemDto toItemDto(Item item);
+
+    Item toItem(CreateItemDto createItemDto);
+
+    Collection<ItemDto> toItemDtoList(Collection<Item> items);
 }

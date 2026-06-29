@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.practicum.shareit.user.dto.CreateUserDto;
 import ru.practicum.shareit.user.dto.UserDto;
 import ru.practicum.shareit.user.mapper.UserMapper;
 
@@ -15,29 +16,30 @@ import java.util.Collection;
 public class UserController {
 
     private final UserService userService;
+    private final UserMapper userMapper;
 
     @GetMapping
-    public Collection<User> getAllUsers() {
-        return userService.getAllUsers();
+    public ResponseEntity<Collection<UserDto>> getAllUsers() {
+        return ResponseEntity.ok().body(userMapper.toUserDtoList(userService.getAllUsers()));
     }
 
     @GetMapping("/{id}")
-    public User getUserById(@PathVariable("id") long id) {
-        return userService.getUserById(id);
+    public ResponseEntity<UserDto> getUserById(@PathVariable long id) {
+        return ResponseEntity.ok().body(userMapper.toUserDto(userService.getUserById(id)));
     }
 
     @PostMapping
-    public User createUser(@Valid @RequestBody UserDto userDto) {
-        User user = UserMapper.mapToUser(userDto);
-        return userService.createUser(user);
+    public ResponseEntity<UserDto> createUser(@Valid @RequestBody CreateUserDto createUserDto) {
+        User user = userMapper.touser(createUserDto);
+        return ResponseEntity.ok().body(userMapper.toUserDto(userService.createUser(user)));
     }
 
     @PatchMapping("/{id}")
-    public User updateUser(@Valid @RequestBody UserDto userDto,
-                           @PathVariable("id") long id) {
-        User user = UserMapper.mapToUser(userDto);
+    public ResponseEntity<User> updateUser(@Valid @RequestBody CreateUserDto createUserDto,
+                                           @PathVariable long id) {
+        User user = userMapper.touser(createUserDto);
         user.setId(id);
-        return userService.updateUser(user);
+        return ResponseEntity.ok().body(userService.updateUser(user));
     }
 
     @DeleteMapping("/{id}")

@@ -2,7 +2,9 @@ package ru.practicum.shareit.item;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.practicum.shareit.item.dto.CreateItemDto;
 import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.mapper.ItemMapper;
 import ru.practicum.shareit.item.model.Item;
@@ -15,35 +17,36 @@ import java.util.Collection;
 public class ItemController {
 
     private final ItemService itemService;
+    private final ItemMapper itemMapper;
 
     @GetMapping
-    public Collection<Item> getAllUserItems(@RequestHeader("X-Sharer-User-Id") Long userId) {
-        return itemService.getAllUserItems(userId);
+    public ResponseEntity<Collection<ItemDto>> getAllUserItems(@RequestHeader("X-Sharer-User-Id") Long userId) {
+        return ResponseEntity.ok().body(itemMapper.toItemDtoList(itemService.getAllUserItems(userId)));
     }
 
     @GetMapping("/{id}")
-    public Item getItemById(@PathVariable("id") long id) {
-        return itemService.getItemById(id);
+    public ResponseEntity<ItemDto> getItemById(@PathVariable long id) {
+        return ResponseEntity.ok().body(itemMapper.toItemDto(itemService.getItemById(id)));
     }
 
     @GetMapping("/search")
-    public Collection<Item> searchItems(@RequestParam("text") String searchString) {
-        return itemService.searchItems(searchString);
+    public ResponseEntity<Collection<ItemDto>> searchItems(@RequestParam("text") String searchString) {
+        return ResponseEntity.ok().body(itemMapper.toItemDtoList(itemService.searchItems(searchString)));
     }
 
     @PostMapping
-    public Item createItem(@Valid @RequestBody ItemDto itemDto,
-                           @RequestHeader("X-Sharer-User-Id") Long userId) {
-        Item item = ItemMapper.mapToItem(itemDto);
-        return itemService.createItem(item, userId);
+    public ResponseEntity<ItemDto> createItem(@Valid @RequestBody CreateItemDto createItemDto,
+                                              @RequestHeader("X-Sharer-User-Id") Long userId) {
+        Item item = itemMapper.toItem(createItemDto);
+        return ResponseEntity.ok().body(itemMapper.toItemDto(itemService.createItem(item, userId)));
     }
 
     @PatchMapping("/{id}")
-    public Item updateItem(@Valid @RequestBody ItemDto itemDto,
-                           @PathVariable("id") long id,
-                           @RequestHeader("X-Sharer-User-Id") Long userId) {
-        Item item = ItemMapper.mapToItem(itemDto);
+    public ResponseEntity<ItemDto> updateItem(@Valid @RequestBody CreateItemDto createItemDto,
+                                              @PathVariable long id,
+                                              @RequestHeader("X-Sharer-User-Id") Long userId) {
+        Item item = itemMapper.toItem(createItemDto);
         item.setId(id);
-        return itemService.updateItem(item, userId);
+        return ResponseEntity.ok().body(itemMapper.toItemDto(itemService.updateItem(item, userId)));
     }
 }
