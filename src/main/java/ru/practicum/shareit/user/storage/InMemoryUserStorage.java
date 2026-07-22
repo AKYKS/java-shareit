@@ -1,46 +1,70 @@
 package ru.practicum.shareit.user.storage;
 
-import org.springframework.stereotype.Component;
-import ru.practicum.shareit.expection.NotFoundException;
-import ru.practicum.shareit.expection.ValidationException;
+import org.springframework.stereotype.Repository;
+import ru.practicum.shareit.exception.DuplicatedDataException;
 import ru.practicum.shareit.user.User;
 
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
-@Component
+@Repository
 public class InMemoryUserStorage implements UserStorage {
 
     private final Map<Long, User> users = new HashMap<>();
 
     @Override
-    public Collection<User> getAllUsers() {
+    public Collection<User> getAll() {
         return users.values();
     }
 
     @Override
-    public User getUserById(Long id) {
-        return users.get(id);
+    public Optional<User> getUserById(long id) {
+        return Optional.ofNullable(users.get(id));
     }
 
     @Override
-    public User createUser(User user) {
-        user.setId(getNextId());
-        users.put(user.getId(), user);
+    public User create(User user) {
+        boolean emailExists = isEmailExist(user.getEmail());
+        if (emailExists) {
+            throw new DuplicatedDataException("Эта почта занята");
+        }
+        Long id = getNextId();
+        user.setId(id);
+        users.put(id, user);
         return user;
     }
 
     @Override
-    public User updateUser(User user) {
-        if (user.getId() == null) {
-            throw new ValidationException("Id должен быть указан!");
+    public User update(long id, User user) {
+        boolean emailExists = users.values().stream()
+                .filter(u -> !u.getId().equals(id))
+                .anyMatch(u -> u.getEmail().equalsIgnoreCase(user.getEmail()));
+        if (emailExists) {
+            throw new DuplicatedDataException("Эта почта занята");
         }
-        if (users.containsKey(user.getId())) {
-            user.setEmail(user.getEmail());
-            user.setName(user.getName());
-            return user;
-        } else throw new NotFoundException("Такого пользователя нет в списке!");
+
+        User userUpdated = users.get(id);
+
+        if (user.getName() != null) {
+            userUpdated.setName(user.getName());
+        }
+        if (user.getEmail() != null) {
+            userUpdated.setEmail(user.getEmail());
+        }
+
+        return userUpdated;
+    }
+
+    @Override
+    public void deleteUser(long id) {
+        users.remove(id);
+    }
+
+    private boolean isEmailExist(String email) {
+        return users.values().stream()
+                .anyMatch(e -> e.getEmail().equalsIgnoreCase(email));
     }
 
     private Long getNextId() {
@@ -52,8 +76,4 @@ public class InMemoryUserStorage implements UserStorage {
         return ++currentMaxId;
     }
 
-    @Override
-    public void deleteUser(Long id) {
-        users.remove(id);
-    }
 }

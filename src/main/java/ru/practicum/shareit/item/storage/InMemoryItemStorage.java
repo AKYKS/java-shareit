@@ -1,8 +1,8 @@
 package ru.practicum.shareit.item.storage;
 
 import org.springframework.stereotype.Component;
-import ru.practicum.shareit.expection.NotFoundException;
-import ru.practicum.shareit.expection.ValidationException;
+import ru.practicum.shareit.exception.NotFoundException;
+import ru.practicum.shareit.exception.ValidationException;
 import ru.practicum.shareit.item.model.Item;
 
 import java.util.*;
