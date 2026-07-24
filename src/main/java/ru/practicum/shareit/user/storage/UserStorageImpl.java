@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Repository
-public class InMemoryUserStorage implements UserStorage {
+public class UserStorageImpl implements UserStorage {
 
     private final Map<Long, User> users = new HashMap<>();
 

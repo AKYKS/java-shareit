@@ -20,34 +20,34 @@ public class ItemController {
     }
 
     @GetMapping
-    public Collection<ItemsDto> getAll(@RequestHeader("X-Sharer-User-Id") long userId) {
+    public Collection<ItemsDto> getAll(@RequestHeader("X-Sharer-User-Id") Long userId) {
         return itemService.getAll(userId);
     }
 
     @GetMapping("/{itemId}")
-    public ItemDto getItemById(@PathVariable("itemId") long id, @RequestHeader("X-Sharer-User-Id") long userId) {
+    public ItemDto getItemById(@PathVariable("itemId") Long id, @RequestHeader("X-Sharer-User-Id") Long userId) {
         return itemService.getItemById(id, userId);
     }
 
     @PostMapping
-    public ItemDto add(@RequestBody @Valid ItemDto itemDto, @RequestHeader("X-Sharer-User-Id") long userId) {
+    public ItemDto add(@RequestBody @Valid ItemDto itemDto, @RequestHeader("X-Sharer-User-Id") Long userId) {
         return itemService.add(itemDto, userId);
     }
 
     @PostMapping("/{itemId}/comment")
-    public CommentDto addComment(@PathVariable("itemId") long id, @RequestHeader("X-Sharer-User-Id") long userId,
+    public CommentDto addComment(@PathVariable("itemId") Long id, @RequestHeader("X-Sharer-User-Id") Long userId,
                                  @RequestBody @Valid CommentDto comment) {
         return itemService.addComment(id, userId, comment);
     }
 
     @PatchMapping("/{itemId}")
-    public ItemUpdateDto update(@PathVariable("itemId") long id, @RequestHeader("X-Sharer-User-Id") long userId,
+    public ItemUpdateDto update(@PathVariable("itemId") Long id, @RequestHeader("X-Sharer-User-Id") Long userId,
                                 @RequestBody ItemUpdateDto itemUpdateDto) {
         return itemService.update(id, userId, itemUpdateDto);
     }
 
     @GetMapping("/search")
-    public Collection<ItemDto> search(@RequestParam String text, @RequestHeader("X-Sharer-User-Id") long userId) {
+    public Collection<ItemDto> search(@RequestParam String text, @RequestHeader("X-Sharer-User-Id") Long userId) {
         return itemService.search(text, userId);
     }
 

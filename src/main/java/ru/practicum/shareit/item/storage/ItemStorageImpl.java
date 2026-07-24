@@ -8,7 +8,7 @@ import ru.practicum.shareit.item.model.Item;
 import java.util.*;
 
 @Component
-public class InMemoryItemStorage implements ItemStorage {
+public class ItemStorageImpl implements ItemStorage {
     private final Map<Long, Item> items = new HashMap<>();
 
     @Override
