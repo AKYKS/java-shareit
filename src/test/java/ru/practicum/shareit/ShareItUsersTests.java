@@ -1,106 +1,117 @@
 package ru.practicum.shareit;
 
-import lombok.RequiredArgsConstructor;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.annotation.DirtiesContext;
-import ru.practicum.shareit.expection.NotFoundException;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.user.User;
-import ru.practicum.shareit.user.UserService;
+import ru.practicum.shareit.user.UserRepository;
+import ru.practicum.shareit.user.UserServiceImpl;
+import ru.practicum.shareit.user.dto.UserDto;
+import ru.practicum.shareit.user.dto.UserUpdateDto;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
-@SpringBootTest
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
-@Import(UserService.class)
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
+@ExtendWith(MockitoExtension.class)
 class ShareItUsersTests {
-    @Autowired
-    private final UserService userService;
 
-    @Test
-    void contextLoads() {
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private UserServiceImpl userService;
+
+    private User user;
+    private UserDto userDto;
+
+    @BeforeEach
+    void setUp() {
+        user = User.builder().id(1L).name("Alice").email("alice@example.com").build();
+        userDto = UserDto.builder().name("Alice").email("alice@example.com").build();
     }
 
     @Test
-    public void testGetUserById_Success() {
-        User user = new User();
-        user.setEmail("test@example.com");
-        user.setName("Test Name");
-        User createdUser = userService.createUser(user);
+    void getAll_returnsAllUsers() {
+        when(userRepository.findAll()).thenReturn(List.of(user));
 
-        User foundUser = userService.getUserById(createdUser.getId());
+        Collection<UserDto> result = userService.getAll();
 
-        assertThat(foundUser)
-                .isNotNull()
-                .hasFieldOrPropertyWithValue("id", createdUser.getId())
-                .hasFieldOrPropertyWithValue("email", "test@example.com")
-                .hasFieldOrPropertyWithValue("name", "Test Name");
+        assertEquals(1, result.size());
+        assertEquals("Alice", result.iterator().next().getName());
     }
 
     @Test
-    public void testGetUserById_UserNotFound_ThrowsNotFoundException() {
-        assertThatThrownBy(() -> userService.getUserById(999L))
-                .isInstanceOf(NotFoundException.class)
-                .hasMessageContaining("Такого юзера нет в списке!");
+    void getAll_emptyStorage_returnsEmptyList() {
+        when(userRepository.findAll()).thenReturn(List.of());
+
+        Collection<UserDto> result = userService.getAll();
+
+        assertTrue(result.isEmpty());
     }
 
     @Test
-    public void testGetAllUsers_Success() {
-        createTestUser("user1@example.com", "User One");
-        createTestUser("user2@example.com", "User Two");
+    void getUserById_existingUser_returnsUserDto() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
-        Collection<User> allUsers = userService.getAllUsers();
-        assertThat(allUsers)
-                .isNotEmpty()
-                .hasSize(2)
-                .extracting("email")
-                .containsExactlyInAnyOrder("user1@example.com", "user2@example.com");
+        UserDto result = userService.getUserById(1L);
+
+        assertEquals("Alice", result.getName());
+        assertEquals("alice@example.com", result.getEmail());
     }
 
     @Test
-    public void testCreateUser_Success() {
-        User user = new User();
-        user.setEmail("newuser@example.com");
-        user.setName("New User");
+    void getUserById_unknownId_throwsNotFoundException() {
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
-        User createdUser = userService.createUser(user);
-
-        assertThat(createdUser)
-                .isNotNull()
-                .hasFieldOrPropertyWithValue("email", "newuser@example.com")
-                .hasFieldOrPropertyWithValue("name", "New User");
-
-        assertThat(createdUser.getId()).isNotNull();
+        assertThrows(NotFoundException.class, () -> userService.getUserById(99L));
     }
 
     @Test
-    public void testUpdateUser_Success() {
-        User user = createTestUser("update@example.com", "Update User");
+    void createUser_savesAndReturnsUser() {
+        when(userRepository.existsByEmailIgnoreCase(userDto.getEmail())).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenReturn(user);
 
-        User user2 = new User();
-        user2.setId(1L);
-        user2.setEmail("test@example.com");
-        user2.setName("Test Name");
+        UserDto result = userService.createUser(userDto);
 
-        User updatedUser = userService.updateUser(user2);
-
-        assertThat(updatedUser)
-                .isNotNull()
-                .hasFieldOrPropertyWithValue("id", user.getId())
-                .hasFieldOrPropertyWithValue("name", "Test Name")
-                .hasFieldOrPropertyWithValue("email", "test@example.com");
+        assertEquals("Alice", result.getName());
+        verify(userRepository).save(any(User.class));
     }
 
-    private User createTestUser(String email, String name) {
-        User user = new User();
-        user.setEmail(email);
-        user.setName(name);
-        return userService.createUser(user);
+    @Test
+    void updateUser_existingUser_updatesAndReturnsUserDto() {
+        UserUpdateDto patch = UserUpdateDto.builder().name("Bob").build();
+        User updated = User.builder().id(1L).name("Bob").email("alice@example.com").build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenReturn(updated);
+
+        UserDto result = userService.updateUser(1L, patch);
+
+        assertEquals("Bob", result.getName());
     }
+
+    @Test
+    void updateUser_unknownId_throwsNotFoundException() {
+        UserUpdateDto patch = UserUpdateDto.builder().name("Bob").build();
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> userService.updateUser(99L, patch));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void deleteUser_existingUser_callsStorage() {
+        userService.deleteUser(1L);
+        verify(userRepository).deleteById(1L);
+    }
+
 }

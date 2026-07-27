@@ -1,14 +1,14 @@
 package ru.practicum.shareit.item.storage;
 
 import org.springframework.stereotype.Component;
-import ru.practicum.shareit.expection.NotFoundException;
-import ru.practicum.shareit.expection.ValidationException;
+import ru.practicum.shareit.exception.NotFoundException;
+import ru.practicum.shareit.exception.ValidationException;
 import ru.practicum.shareit.item.model.Item;
 
 import java.util.*;
 
 @Component
-public class InMemoryItemStorage implements ItemStorage {
+public class ItemStorageImpl implements ItemStorage {
     private final Map<Long, Item> items = new HashMap<>();
 
     @Override
@@ -19,7 +19,7 @@ public class InMemoryItemStorage implements ItemStorage {
     @Override
     public Collection<Item> getAllUserItems(Long userId) {
         return items.values().stream()
-                .filter(item -> Objects.equals(item.getOwner(), userId))
+                .filter(item -> Objects.equals(item.getOwner().getId(), userId))
                 .toList();
     }
 

@@ -1,63 +1,23 @@
 package ru.practicum.shareit.item;
 
-
-import org.springframework.stereotype.Service;
-import ru.practicum.shareit.expection.ConditionsNotMetException;
-import ru.practicum.shareit.expection.NotFoundException;
-import ru.practicum.shareit.item.model.Item;
-import ru.practicum.shareit.item.storage.ItemStorage;
-import ru.practicum.shareit.user.storage.UserStorage;
+import ru.practicum.shareit.item.dto.CommentDto;
+import ru.practicum.shareit.item.dto.ItemDto;
+import ru.practicum.shareit.item.dto.ItemUpdateDto;
+import ru.practicum.shareit.item.dto.ItemsDto;
 
 import java.util.Collection;
 
-@Service
-public class ItemService {
-    private final ItemStorage itemStorage;
-    private final UserStorage userStorage;
+public interface ItemService {
 
-    public ItemService(ItemStorage itemStorage, UserStorage userStorage) {
-        this.itemStorage = itemStorage;
-        this.userStorage = userStorage;
-    }
+    Collection<ItemsDto> getAll(long userId);
 
-    public Item getItemById(Long id) {
-        return itemStorage.getItemById(id);
-    }
+    ItemDto getItemById(long id, long userId);
 
-    public Collection<Item> getAllUserItems(Long userId) {
-        return itemStorage.getAllUserItems(userId);
-    }
+    ItemDto add(ItemDto itemDto, long userId);
 
-    public Item createItem(Item item, Long userId) {
-        if (userId == null) {
-            throw new ConditionsNotMetException("Отсутствует id пользователя");
-        }
+    ItemUpdateDto update(long id, long userId, ItemUpdateDto itemUpdateDto);
 
-        if (userStorage.getUserById(userId) == null) {
-            throw new NotFoundException("Пользователь с этим id отсутствует");
-        }
+    CommentDto addComment(long id, long userId, CommentDto comment);
 
-        if (item.getAvailable() == null || item.getName().isBlank() || item.getDescription().isBlank()) {
-            throw new ConditionsNotMetException("Отсутствует одно из трех обязательных значений");
-        }
-        item.setOwner(userId);
-        return itemStorage.createItem(item);
-    }
-
-    public Item updateItem(Item item, Long userId) {
-        if (userId == null) {
-            throw new ConditionsNotMetException("Отсутствует id пользователя");
-        }
-
-        if (userStorage.getUserById(userId) == null) {
-            throw new NotFoundException("Пользователь с этим id отсутствует");
-        }
-
-        item.setOwner(userId);
-        return itemStorage.updateItem(item);
-    }
-
-    public Collection<Item> searchItems(String searchString) {
-        return itemStorage.searchItems(searchString);
-    }
+    Collection<ItemDto> search(String text, long userId);
 }

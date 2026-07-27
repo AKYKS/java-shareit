@@ -1,153 +1,284 @@
 package ru.practicum.shareit;
-
-import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.annotation.DirtiesContext;
-import ru.practicum.shareit.item.ItemService;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import ru.practicum.shareit.booking.Booking;
+import ru.practicum.shareit.booking.BookingRepository;
+import ru.practicum.shareit.booking.BookingStatus;
+import ru.practicum.shareit.exception.BadRequestException;
+import ru.practicum.shareit.exception.NotFoundException;
+import ru.practicum.shareit.item.Comment;
+import ru.practicum.shareit.item.CommentRepository;
+import ru.practicum.shareit.item.ItemRepository;
+import ru.practicum.shareit.item.ItemServiceImpl;
+import ru.practicum.shareit.item.dto.CommentDto;
+import ru.practicum.shareit.item.dto.ItemDto;
+import ru.practicum.shareit.item.dto.ItemUpdateDto;
+import ru.practicum.shareit.item.dto.ItemsDto;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.user.User;
-import ru.practicum.shareit.user.UserService;
+import ru.practicum.shareit.user.UserRepository;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
-@SpringBootTest
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
-@Import({ItemService.class, UserService.class})
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
+@ExtendWith(MockitoExtension.class)
 class ShareItItemsTests {
 
-    @Autowired
-    private final ItemService itemService;
-    @Autowired
-    private final UserService userService;
+    @Mock
+    private ItemRepository itemRepository;
 
-    @Test
-    void contextLoads() {
-    }
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private BookingRepository bookingRepository;
+
+    @Mock
+    private CommentRepository commentRepository;
+
+    @InjectMocks
+    private ItemServiceImpl itemService;
+
+    private User user;
+    private Item item;
+    private ItemDto itemDto;
 
     @BeforeEach
-    void userLoads() {
-        User user = new User();
-        user.setEmail("newuser@example.com");
-        user.setName("New User");
+    void setUp() {
+        user = User.builder().id(1L).name("Alice").email("alice@example.com").build();
+        item = Item.builder().id(1L).owner(user).name("Drill").description("Powerful drill").available(true).build();
+        itemDto = ItemDto.builder().name("Drill").description("Powerful drill").available(true).build();
+    }
 
-        userService.createUser(user);
+    // --- getAll ---
 
-        User user2 = new User();
-        user2.setEmail("newuser2@example.com");
-        user2.setName("New User2");
+    @Test
+    void getAll_existingUser_returnsOwnItems() {
+        when(itemRepository.findAllByOwnerId(1L)).thenReturn(List.of(item));
+        when(bookingRepository.findAllByItemIdIn(List.of(1L))).thenReturn(List.of());
+        when(commentRepository.findAllByItemIdIn(List.of(1L))).thenReturn(List.of());
 
-        userService.createUser(user2);
+        Collection<ItemsDto> result = itemService.getAll(1L);
 
-        User user3 = new User();
-        user3.setEmail("newuser3@example.com");
-        user3.setName("New User3");
-
-        userService.createUser(user3);
+        assertEquals(1, result.size());
+        assertEquals("Drill", result.iterator().next().getName());
+        assertTrue(result.iterator().next().getComments().isEmpty());
     }
 
     @Test
-    public void testGetItemById_Success() {
-        Item item = new Item();
-        item.setName("Test Name");
-        item.setDescription("Test desc");
-        item.setAvailable(true);
-        Item createdItem = itemService.createItem(item, 1L);
+    void getAll_itemsWithComments_populatesComments() {
+        Comment comment = Comment.builder().id(1L).text("Great!").item(item).author(user)
+                .created(LocalDateTime.now()).build();
 
-        Item foundItem = itemService.getItemById(createdItem.getId());
+        when(itemRepository.findAllByOwnerId(1L)).thenReturn(List.of(item));
+        when(bookingRepository.findAllByItemIdIn(List.of(1L))).thenReturn(List.of());
+        when(commentRepository.findAllByItemIdIn(List.of(1L))).thenReturn(List.of(comment));
 
-        assertThat(foundItem)
-                .isNotNull()
-                .hasFieldOrPropertyWithValue("id", createdItem.getId())
-                .hasFieldOrPropertyWithValue("name", "Test Name")
-                .hasFieldOrPropertyWithValue("description", "Test desc");
+        Collection<ItemsDto> result = itemService.getAll(1L);
+
+        List<CommentDto> comments = result.iterator().next().getComments();
+        assertEquals(1, comments.size());
+        assertEquals("Great!", comments.get(0).getText());
+        assertEquals("Alice", comments.get(0).getAuthorName());
+    }
+
+    // --- getItemById ---
+
+    @Test
+    void getItemById_existingItem_returnsItemDtoWithComments() {
+        Comment comment = Comment.builder().id(1L).text("Nice").item(item).author(user)
+                .created(LocalDateTime.now()).build();
+
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+        when(commentRepository.findAllByItemId(1L)).thenReturn(List.of(comment));
+
+        ItemDto result = itemService.getItemById(1L, 1L);
+
+        assertEquals("Drill", result.getName());
+        assertTrue(result.getAvailable());
+        assertEquals(1, result.getComments().size());
+        assertEquals("Nice", result.getComments().get(0).getText());
     }
 
     @Test
-    public void getAllUserItems() {
-        Item item = new Item();
-        item.setName("Test Name");
-        item.setDescription("Test desc");
-        item.setAvailable(true);
-        itemService.createItem(item, 1L);
+    void getItemById_populatesLastAndNextBookingForOwner() {
+        LocalDateTime lastStart = LocalDateTime.now().minusDays(5);
+        LocalDateTime nextStart = LocalDateTime.now().plusDays(5);
+        Booking lastBooking = Booking.builder().id(1L).item(item).booker(user)
+                .start(lastStart).end(lastStart.plusDays(1)).status(BookingStatus.APPROVED).build();
+        Booking nextBooking = Booking.builder().id(2L).item(item).booker(user)
+                .start(nextStart).end(nextStart.plusDays(1)).status(BookingStatus.APPROVED).build();
 
-        Item item2 = new Item();
-        item2.setName("Test Name2");
-        item2.setDescription("Test desc2");
-        item2.setAvailable(true);
-        itemService.createItem(item, 1L);
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+        when(commentRepository.findAllByItemId(1L)).thenReturn(List.of());
+        when(bookingRepository.findFirstByItemIdAndStatusAndStartBeforeOrderByStartDesc(
+                eq(1L), eq(BookingStatus.APPROVED), any(LocalDateTime.class))).thenReturn(Optional.of(lastBooking));
+        when(bookingRepository.findFirstByItemIdAndStatusAndStartAfterOrderByStartAsc(
+                eq(1L), eq(BookingStatus.APPROVED), any(LocalDateTime.class))).thenReturn(Optional.of(nextBooking));
 
-        Collection<Item> allItems = itemService.getAllUserItems(1L);
+        ItemDto result = itemService.getItemById(1L, 1L);
 
-        assertThat(allItems)
-                .hasSize(2);
+        assertEquals(lastStart, result.getLastBooking());
+        assertEquals(nextStart, result.getNextBooking());
     }
 
     @Test
-    public void createItem() {
-        Item item = new Item();
-        item.setName("Test Name");
-        item.setDescription("Test desc");
-        item.setAvailable(true);
-        Item createdItem = itemService.createItem(item, 1L);
+    void getItemById_unknownUser_throwsNotFoundException() {
+        when(userRepository.existsById(99L)).thenReturn(false);
 
-        assertThat(createdItem)
-                .hasFieldOrPropertyWithValue("id", 1L)
-                .hasFieldOrPropertyWithValue("name", "Test Name")
-                .hasFieldOrPropertyWithValue("description", "Test desc");
+        assertThrows(NotFoundException.class, () -> itemService.getItemById(1L, 99L));
+        verify(itemRepository, never()).findById(anyLong());
     }
 
     @Test
-    public void updateItem() {
-        Item item = new Item();
-        item.setId(1L);
-        item.setName("Test Name");
-        item.setDescription("Test desc");
-        item.setAvailable(true);
-        itemService.createItem(item, 1L);
+    void getItemById_unknownItem_throwsNotFoundException() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(itemRepository.findById(99L)).thenReturn(Optional.empty());
 
-        Item item2 = new Item();
-        item2.setId(1L);
-        item2.setName("Test2 Name2");
-        item2.setDescription("Test2 desc2");
-        item2.setAvailable(true);
-        Item updatedItem = itemService.updateItem(item2, 1L);
+        assertThrows(NotFoundException.class, () -> itemService.getItemById(99L, 1L));
+    }
 
-        assertThat(updatedItem)
-                .hasFieldOrPropertyWithValue("id", 1L)
-                .hasFieldOrPropertyWithValue("name", "Test2 Name2")
-                .hasFieldOrPropertyWithValue("description", "Test2 desc2");
+    // --- add ---
+
+    @Test
+    void add_validUserAndItem_createsAndReturnsItemDto() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(itemRepository.save(any(Item.class))).thenReturn(item);
+
+        ItemDto result = itemService.add(itemDto, 1L);
+
+        assertEquals("Drill", result.getName());
+        verify(itemRepository).save(any(Item.class));
     }
 
     @Test
-    public void searchItems() {
-        Item item = new Item();
-        item.setName("Test Name");
-        item.setDescription("Test desc");
-        item.setAvailable(true);
-        itemService.createItem(item, 1L);
+    void add_unknownUser_throwsNotFoundException() {
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
-        Item item2 = new Item();
-        item2.setName("Test Name2");
-        item2.setDescription("Test desc2");
-        item2.setAvailable(true);
-        itemService.createItem(item2, 2L);
+        assertThrows(NotFoundException.class, () -> itemService.add(itemDto, 99L));
+        verify(itemRepository, never()).save(any());
+    }
 
-        Item item3 = new Item();
-        item3.setName("cho");
-        item3.setDescription("kogo");
-        item3.setAvailable(true);
-        itemService.createItem(item3, 3L);
+    // --- update ---
 
-        Collection<Item> result = itemService.searchItems("test");
+    @Test
+    void update_validOwner_updatesAndReturnsItemUpdateDto() {
+        ItemUpdateDto patch = ItemUpdateDto.builder().name("Big Drill").build();
+        Item updated = Item.builder().id(1L).owner(user).name("Big Drill").description("Powerful drill").available(true).build();
 
-        assertThat(result)
-                .hasSize(2);
+        when(itemRepository.findByIdAndOwnerId(1L, 1L)).thenReturn(Optional.of(item));
+        when(itemRepository.save(any(Item.class))).thenReturn(updated);
+
+        ItemUpdateDto result = itemService.update(1L, 1L, patch);
+
+        assertEquals("Big Drill", result.getName());
+    }
+
+    @Test
+    void update_unknownItemOrNotOwner_throwsNotFoundException() {
+        ItemUpdateDto patch = ItemUpdateDto.builder().name("Big Drill").build();
+        when(itemRepository.findByIdAndOwnerId(1L, 99L)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> itemService.update(1L, 99L, patch));
+        verify(itemRepository, never()).save(any());
+    }
+
+    // --- search ---
+
+    @Test
+    void search_validUser_returnsMatchingItems() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(itemRepository.search("drill")).thenReturn(List.of(item));
+
+        Collection<ItemDto> result = itemService.search("drill", 1L);
+
+        assertEquals(1, result.size());
+        assertEquals("Drill", result.iterator().next().getName());
+    }
+
+    @Test
+    void search_emptyText_returnsEmptyList() {
+        Collection<ItemDto> result = itemService.search("", 1L);
+
+        assertTrue(result.isEmpty());
+        verifyNoInteractions(itemRepository);
+    }
+
+    @Test
+    void search_unknownUser_throwsNotFoundException() {
+        when(userRepository.existsById(99L)).thenReturn(false);
+
+        assertThrows(NotFoundException.class, () -> itemService.search("drill", 99L));
+        verify(itemRepository, never()).search(any());
+    }
+
+    // --- addComment ---
+
+    @Test
+    void addComment_userWithCompletedBooking_savesAndReturnsCommentDto() {
+        CommentDto request = CommentDto.builder().text("Works great").build();
+        Comment saved = Comment.builder().id(5L).text("Works great").item(item).author(user)
+                .created(LocalDateTime.now()).build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+        when(bookingRepository.existsByBookerIdAndItemIdAndEndBefore(
+                eq(1L), eq(1L), any(LocalDateTime.class))).thenReturn(true);
+        when(commentRepository.save(any(Comment.class))).thenReturn(saved);
+
+        CommentDto result = itemService.addComment(1L, 1L, request);
+
+        assertEquals("Works great", result.getText());
+        assertEquals("Alice", result.getAuthorName());
+
+        ArgumentCaptor<Comment> captor = ArgumentCaptor.forClass(Comment.class);
+        verify(commentRepository).save(captor.capture());
+        assertEquals(item, captor.getValue().getItem());
+        assertEquals(user, captor.getValue().getAuthor());
+    }
+
+    @Test
+    void addComment_userWithoutCompletedBooking_throwsBadRequestException() {
+        CommentDto request = CommentDto.builder().text("Works great").build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+        when(bookingRepository.existsByBookerIdAndItemIdAndEndBefore(
+                eq(1L), eq(1L), any(LocalDateTime.class))).thenReturn(false);
+
+        assertThrows(BadRequestException.class, () -> itemService.addComment(1L, 1L, request));
+        verify(commentRepository, never()).save(any());
+    }
+
+    @Test
+    void addComment_unknownUser_throwsNotFoundException() {
+        CommentDto request = CommentDto.builder().text("Works great").build();
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> itemService.addComment(1L, 99L, request));
+        verify(commentRepository, never()).save(any());
+    }
+
+    @Test
+    void addComment_unknownItem_throwsNotFoundException() {
+        CommentDto request = CommentDto.builder().text("Works great").build();
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(itemRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> itemService.addComment(99L, 1L, request));
+        verify(commentRepository, never()).save(any());
     }
 }
