@@ -76,8 +76,8 @@ class ItemServiceImplIntegrationTest {
                 .build());
     }
 
-    private Comment saveComment(Item item, User author, String text) {
-        return commentRepository.save(Comment.builder()
+    private void saveComment(Item item, User author, String text) {
+        commentRepository.save(Comment.builder()
                 .item(item)
                 .author(author)
                 .text(text)

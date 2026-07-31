@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import ru.practicum.shareit.request.Request;
 import ru.practicum.shareit.user.User;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Data
@@ -22,7 +23,7 @@ public class Item {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")
     private User owner;
 
@@ -39,7 +40,9 @@ public class Item {
     @JoinColumn(name = "request_id")
     private Request request;
 
-    @Transient
-    private Set<Comment> comments;
+    @OneToMany(mappedBy = "item", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private Set<Comment> comments = new HashSet<>();
+//    @Transient
+//    private Set<Comment> comments;
 
 }

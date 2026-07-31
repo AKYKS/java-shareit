@@ -1,10 +1,11 @@
 package ru.practicum.shareit.user;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.exception.ConflictException;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.user.dto.UserDto;
@@ -14,7 +15,6 @@ import java.util.Collection;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@Transactional
 @SpringBootTest
 @ActiveProfiles("test")
 class UserServiceImplIntegrationTest {
@@ -24,6 +24,18 @@ class UserServiceImplIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void setUp() {
+        jdbcTemplate.execute("DELETE FROM comments");
+        jdbcTemplate.execute("DELETE FROM bookings");
+        jdbcTemplate.execute("DELETE FROM items");
+        jdbcTemplate.execute("DELETE FROM requests");
+        jdbcTemplate.execute("DELETE FROM users");
+    }
 
     private User saveUser(String name, String email) {
         return userRepository.save(User.builder().name(name).email(email).build());

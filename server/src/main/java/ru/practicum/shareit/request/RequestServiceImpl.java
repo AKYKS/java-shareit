@@ -38,9 +38,9 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public List<RequestDto> getOwnRequests(Long userId) {
-        userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User not found"));
-
+        if (!userRepository.existsById(userId)) {
+            throw new NotFoundException("User not found");
+        }
         List<Request> requests = requestRepository.findByRequestorIdOrderByCreatedDesc(userId);
         List<Long> requestIds = requests.stream()
                 .map(Request::getId)
@@ -55,8 +55,9 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public List<RequestDto> getAllRequests(Long userId) {
-        userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User not found"));
+        if (!userRepository.existsById(userId)) {
+            throw new NotFoundException("User not found");
+        }
         List<Request> requests = requestRepository.findAllByRequestorIdNotOrderByCreatedDesc(userId);
         List<Long> requestIds = requests.stream()
                 .map(Request::getId)
@@ -71,8 +72,9 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public RequestDto getRequestById(Long id, Long userId) {
-        userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User not found"));
+        if (!userRepository.existsById(userId)) {
+            throw new NotFoundException("User not found");
+        }
 
         Request request = requestRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Request not found"));
