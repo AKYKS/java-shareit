@@ -36,13 +36,11 @@ public class Item {
     @Column(name = "is_available")
     private Boolean available;
 
-    @OneToOne(fetch = FetchType.EAGER)
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "request_id")
     private Request request;
 
     @OneToMany(mappedBy = "item", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private Set<Comment> comments = new HashSet<>();
-//    @Transient
-//    private Set<Comment> comments;
 
 }
